@@ -1,8 +1,5 @@
 import streamlit as st
-from google.generativeai import answer
 from langchain_openai import ChatOpenAI
-import os
-import dotenv
 from langchain_community.document_loaders import WebBaseLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
@@ -21,16 +18,11 @@ st.title("Tbank Customer Support Chatbot")
 with st.sidebar:
     st.header("Configuration")
     api_key = st.text_input("Enter your OpenAI API Key:", type="password")
-    if api_key:
-        os.environ["OPENAI_API_KEY"] = api_key
 
 # Main app logic
-if "OPENAI_API_KEY" in os.environ:
-    # Initialize components
-    @st.cache_resource
-    def initialize_components():
-        dotenv.load_dotenv()
-        chat = ChatOpenAI(model="gpt-3.5-turbo-1106", temperature=0.2)
+@st.cache_resource
+def initialize_components():
+        chat = ChatOpenAI(model="gpt-3.5-turbo-1106", temperature=0.2,api_key=api_key)
 
         loader = WebBaseLoader("https://www.tbankltd.com/about-us")
         data = loader.load()
@@ -77,54 +69,53 @@ if "OPENAI_API_KEY" in os.environ:
 
 
     # Load components
-    with st.spinner("Initializing Tbank Assistant..."):
-        retriever, document_chain = initialize_components()
+with st.spinner("Initializing Tbank Assistant..."):
+    retriever, document_chain = initialize_components()
 
-    # Chat interface
-    st.subheader("Chat with Tbank Assistant")
+# Chat interface
+st.subheader("Chat with Tbank Assistant")
 
-    # Initialize chat history
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+# Initialize chat history
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-    # Display chat messages from history on app rerun
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+# Display chat messages from history on app rerun
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
-    # React to user input
-    # React to user input
-    if prompt := st.chat_input("What would you like to know about Tbank?"):
-        # Display user message in chat message container
-        st.chat_message("user").markdown(prompt)
-        # Add user message to chat history
-        st.session_state.messages.append({"role": "user", "content": prompt})
+# React to user input
+# React to user input
+if prompt := st.chat_input("What would you like to know about Tbank?"):
+    # Display user message in chat message container
+    st.chat_message("user").markdown(prompt)
+    # Add user message to chat history
+    st.session_state.messages.append({"role": "user", "content": prompt})
 
-        with st.chat_message("assistant"):
-            message_placeholder = st.empty()
+    with st.chat_message("assistant"):
+        message_placeholder = st.empty()
 
-            # Retrieve relevant documents
-            docs = retriever.get_relevant_documents(prompt)
+        # Retrieve relevant documents
+        docs = retriever.get_relevant_documents(prompt)
 
-            # Generate response
-            response = document_chain.invoke(
-                {
-                    "context": docs,
-                    "messages": [
-                        HumanMessage(content=prompt)
-                    ],
-                }
-            )
+        # Generate response
+        response = document_chain.invoke(
+            {
+                "context": docs,
+                "messages": [
+                    HumanMessage(content=prompt)
+                ],
+            }
+        )
 
-            # The response is already a string, so we can use it directly
-            full_response = response
-            message_placeholder.markdown(full_response)
+        # The response is already a string, so we can use it directly
+        full_response = response
+        message_placeholder.markdown(full_response)
 
-        # Add assistant response to chat history
-        st.session_state.messages.append({"role": "assistant", "content": full_response})
+    # Add assistant response to chat history
+    st.session_state.messages.append({"role": "assistant", "content": full_response})
 
-else:
-    st.warning("Please enter your OpenAI API Key in the sidebar to start the chatbot.")
+
 
 # Add a footer
 st.markdown("---")
